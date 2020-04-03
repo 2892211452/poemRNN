@@ -80,6 +80,38 @@ class RNN(nn.Module):
         output = self.softmax(output)
         return output, hidden
     
+    def seqForward(self, input,target):
+
+        criterion = nn.NLLLoss()
+
+        learning_rate = 0.01
+
+        target_line_tensor = target.reshape(-1, 1, 175)
+
+        hidden = rnn.initHidden()
+
+        rnn.zero_grad()
+
+        loss = 0
+        input_line_tensor = input.reshape(-1, 1, 175)
+        
+        for i in range(input_line_tensor.size(0)-1):
+            output, hidden = rnn(input_line_tensor[i].float(), hidden)
+        
+            l = criterion(output,  torch.max(target_line_tensor[i], 1)[1])
+            if i == (input_line_tensor.size(0)-2):
+
+                loss += l
+
+        loss.backward()
+
+        for p in rnn.parameters():
+            p.data.add_(-learning_rate, p.grad.data)
+
+        return output, loss.item() / input_line_tensor.size(0)
+
+
+
 
     def initHidden(self):
         return torch.zeros(1, self.hidden_size)
@@ -135,7 +167,7 @@ if __name__ == "__main__":
     print(words)
     enc = getOneHotDict(words)# dict
         
-    if False:
+    if True:
    
         sentens  = get_all_senten()
 
@@ -150,12 +182,13 @@ if __name__ == "__main__":
                 target = torch.tensor(target)
                 if encode.size(0) <=1:
                     continue
-                out , l = train(encode, target)
+            #     out , l = train(encode, target)
+                out , l = rnn.seqForward(encode, target)
                 loss+=l
             print(loss)
-        torch.save(rnn, './model.h5') 
+        torch.save(rnn, './model1.h5') 
     else:
-        model = torch.load('./model.h5')
+        model = torch.load('./model1.h5')
         hidden = model.initHidden()
         start = '问'
         input = letter_to_encode(start,enc)
